@@ -17,11 +17,14 @@ type Block struct {
 
 type Blockchain struct {
 	Blocks Storage
-	Tail   []byte
 }
 
 func (b *Block) String() string {
 	return fmt.Sprintf("%s [%x/%d]", b.Data, b.Hash, b.Nonce)
+}
+
+func (b *Block) IsEmpty() bool {
+	return len(b.Hash) == 0
 }
 
 func (b *Block) Serialize() []byte {
@@ -56,7 +59,6 @@ func (bc *Blockchain) Append(data string) {
 	tail := bc.Blocks.Tail()
 	newBlock := NewBlock(data, tail.Hash)
 	bc.Blocks.PutBlock(newBlock)
-	bc.Tail = newBlock.Hash
 }
 
 // func (bc *Blockchain) String() string {
@@ -76,7 +78,7 @@ func NewBlockchain() *Blockchain {
 		Blocks: &PeristentStorage{},
 	}
 	bc.Blocks.Open("local.db")
-	if tail := bc.Blocks.Tail(); tail == nil {
+	if tail := bc.Blocks.Tail(); tail.IsEmpty() {
 		bc.Blocks.PutBlock(NewGenesisBlock())
 	}
 
