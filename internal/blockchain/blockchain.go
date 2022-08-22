@@ -1,6 +1,8 @@
 package blockchain
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"time"
 )
@@ -14,11 +16,25 @@ type Block struct {
 }
 
 type Blockchain struct {
-	Blocks []*Block
+	Blocks Storage
+	Tail   []byte
 }
 
 func (b *Block) String() string {
 	return fmt.Sprintf("%s [%x/%d]", b.Data, b.Hash, b.Nonce)
+}
+
+func (b *Block) Serialize() []byte {
+	result := bytes.Buffer{}
+	gob.NewEncoder(&result).Encode(b)
+
+	return result.Bytes()
+}
+
+func DeserializeBlock(raw []byte) *Block {
+	block := &Block{}
+	gob.NewDecoder(bytes.NewReader(raw)).Decode(block)
+	return block
 }
 
 func NewBlock(data string, parentHash []byte) (block *Block) {
@@ -37,24 +53,32 @@ func NewBlock(data string, parentHash []byte) (block *Block) {
 }
 
 func (bc *Blockchain) Append(data string) {
-	parentHash := bc.Blocks[len(bc.Blocks)-1]
-	bc.Blocks = append(bc.Blocks, NewBlock(data, parentHash.Hash))
+	tail := bc.Blocks.Tail()
+	newBlock := NewBlock(data, tail.Hash)
+	bc.Blocks.PutBlock(newBlock)
+	bc.Tail = newBlock.Hash
 }
 
-func (bc *Blockchain) String() string {
-	s := ""
-	for _, v := range bc.Blocks {
-		s += fmt.Sprintln(v)
-	}
-	return s
-}
+// func (bc *Blockchain) String() string {
+// 	s := ""
+// 	for _, v := range bc.Blocks {
+// 		s += fmt.Sprintln(v)
+// 	}
+// 	return s
+// }
 
 func NewGenesisBlock() *Block {
 	return NewBlock("Genesis Block", []byte{})
 }
 
 func NewBlockchain() *Blockchain {
-	return &Blockchain{
-		Blocks: []*Block{NewGenesisBlock()},
+	bc := &Blockchain{
+		Blocks: &PeristentStorage{},
 	}
+	bc.Blocks.Open("local.db")
+	if tail := bc.Blocks.Tail(); tail == nil {
+		bc.Blocks.PutBlock(NewGenesisBlock())
+	}
+
+	return bc
 }

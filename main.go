@@ -10,5 +10,5 @@ func main() {
 	bc := blockchain.NewBlockchain()
 	bc.Append("1st transaction")
 	bc.Append("2nd transaction")
-	fmt.Printf("%s", bc)
+	fmt.Printf("%+v", bc)
 }
